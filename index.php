@@ -23,8 +23,20 @@ require_once INCLUDE_DIR . 'class.page.php';
 
 require_once ROOT_DIR.'vendor/autoload.php';
 
-$_GLOBALS['loader'] = new \Twig\Loader\FilesystemLoader(ROOT_DIR.'themes/legacy/templates');
-//$_GLOBALS['loader'] = new \Twig\Loader\FilesystemLoader(ROOT_DIR.'themes/bootstrap/templates');
+include_once ROOT_DIR.'include/ost-config.php';
+
+if ( defined('THEME')) {
+    $_GLOBALS['theme']=THEME;
+} else {
+    $_GLOBALS['theme']='legacy';
+}
+    
+if (! is_dir ( ROOT_DIR.'themes/'.$_GLOBALS['theme'].'/templates' )) {
+    $_GLOBALS['theme']='legacy';
+}
+
+$_GLOBALS['loader'] = new \Twig\Loader\FilesystemLoader(ROOT_DIR.'themes/'.$_GLOBALS['theme'].'/templates');
+
 $_GLOBALS['twig'] = new \Twig\Environment($_GLOBALS['loader'], [
     'cache' => ROOT_DIR.'data/cache/compilation_cache',
     'auto_reload' => true
