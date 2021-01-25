@@ -17,42 +17,6 @@ require('client.inc.php');
 
 require_once INCLUDE_DIR . 'class.page.php';
 
-/*
- * Maybe put this into client.inc.php ? 
- */
-
-require_once ROOT_DIR.'vendor/autoload.php';
-
-include_once ROOT_DIR.'include/ost-config.php';
-
-if ( defined('THEME')) {
-    $_GLOBALS['theme']=THEME;
-} else {
-    $_GLOBALS['theme']='legacy';
-}
-    
-if (! is_dir ( ROOT_DIR.'themes/'.$_GLOBALS['theme'].'/templates' )) {
-    $_GLOBALS['theme']='legacy';
-}
-
-$_GLOBALS['loader'] = new \Twig\Loader\FilesystemLoader(ROOT_DIR.'themes/'.$_GLOBALS['theme'].'/templates');
-
-$_GLOBALS['twig'] = new \Twig\Environment($_GLOBALS['loader'], [
-    'cache' => ROOT_DIR.'data/cache/compilation_cache',
-    'auto_reload' => true
-]);
-
-// the data to pass to twig 
-$_GLOBALS['page_data'] = Array();
-
-// filter for proper indentation of html output
-$filter = new \Twig\TwigFilter('indent', function ($string, $number) {
-    $spaces = str_repeat(' ', $number);
-    return rtrim(preg_replace('#^(.+)$#m', sprintf('%1$s$1', $spaces), $string));
-}, array('is_safe' => array('all')));
-
-$_GLOBALS['twig']->addFilter($filter);
-
 /* 
  * from header.inc.php
  */
