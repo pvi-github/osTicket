@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+{{ include('head.html') }}
+    <body>
+        <div class="wrapper">
+
+            <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+                <div class="container-fluid">
+
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#myNavbar">
+                            <span class="icon-bar white"></span>
+                            <span class="icon-bar white"></span>
+                            <span class="icon-bar white"></span> 
+                        </button>
+
+                        <a class="navbar-left" href="/index.php" title="Support Center">
+                        <img class="img-responsive" src="/logo.php" border=0 alt="ppsdemo">
+                        </a>
+                    </div> <!-- navbar-header -->
+                    <div class="collapse navbar-collapse" id="myNavbar">
+{% if show_menu %}
+                        <ul class="nav navbar-nav navbar-right">
+{% for item in menu %}
+                            <li role="presentation" class="{{item.class1}} {{item.class2}}"><a class="status" href="{{item.path|raw}}">{{item.label}}</a></li>
+{% endfor %}                
+{% else %}
+                        <ul class="nav navbar-nav navbar-right">
+{% endif %}
+
+
+{% if user_diplay_name is defined %}{{user_diplay_name}}{% endif %}                    
+{% for item in navigation %}
+{% if item.path|length > 0 %}
+                            <li><a href="{{item.path|raw}}"><span class="glyphicon glyphicon-log-in white"></span>{{item.label|raw}}</a></li>
+{% else %}
+                            <li role="presentation" class=""><p class="navbar-text">{{item.label|raw}}</p></li>
+{% endif %}
+{% endfor %}
+{% if languages|length > 0 %}
+                            <li class="dropdown">
+                                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Lang<span class="caret"></span></a>
+                                <ul class="dropdown-menu" role="menu">
+{% for item in languages %}
+                                    <li>
+                                        <a href="{{item.path}}" title="{{item.label}}" style="text-align: center;" >{{item.flag}}&nbsp;<p class="flag {{item.class}}" style="vertical-align: sub;">&nbsp;</p></a>
+                                    </li>
+                        
+{% endfor %}
+                                </ul>
+                            </li>
+{% endif %}
+                        </ul>
+                    </div> <!-- Navbar-collapse -->
+                </div>
+            </nav>
+
+            <!--End of header-->
+
+            <div class="clearfix"></div>
+            <div class="container">
+{% if bar_message %}
+                <div class="{{bar_message_class}}">{{bar_message_text}}</div>
+{% endif %}
+
+                <div class="row">             
+                    <div class="col-md-12">             
+                        
+                        <div class="clearfix"></div>	        
+{% if show_msg %}
+                        <div id="{{msg_id}}">{{msg}}</div>
+{% endif %}
+                        <div id="landing_page" class="container">
+
+                            <div class="row">            
+                                <div class="col-xs-12 col-md-8">            
+                                    {{landing_content|raw}}  
+                                </div>
+                                <div class="sidebar col-xs-12 col-sm-4">
+{% if show_search %}
+                                    <form method="get" action="{{search_action}}" class="search-form">
+                                        <div class="input-group">
+                                            <input type="hidden" name="a" value="search"/>
+                                            <input type="text" name="q" class="search form-control" placeholder="{{search_placeholder}}"/>
+                                            <span class="input-group-btn">
+                                                <button type="submit" class="btn btn-info">>{{search_by_lang}}</button>
+                                            </span>
+                                        </div>
+                                    </form><br>
+{% endif %}
+{{ include('sidebar.html')|indent(36) }}
+                                </div>
+                            </div>            
+                        </div>            
+                        <div class="container row">            
+                            <div class="col-xs-12 col-sm-6">
+                                                        
+                            </div>            
+                        </div>            
+{% if show_kb %}                           
+                        <div class="container row">
+                            <div class="col-xs-12">
+ {% for item in kb_content %}
+                           
+                                <div class="panel panel-default">
+                                    <div class="panel-heading">
+                                        <h3 class="panel-title">
+                                            <span class="glyphicon glyphicon-folder-open" aria-hidden="true"></span>&nbsp;{{item.name}}
+                                        </h3>
+                                    </div>
+                                    <div class="panel-body">
+                                        <div class="row">
+{% for item_2 in item.articles %}
+                                            <div class="col-sm-6">
+                                                <div class="panel panel-primary">
+                                                    <div class="panel-heading">
+                                                        <h3 class="panel-title">
+                                                            <a href="{{item_2.path}}">{{item_2.label}}</a>
+                                                        </h3>
+                                                    </div>
+                                                    <div class="panel-body">
+                                                        {{item_2.teaser}}
+                                                    </div>
+                                                </div>
+                                            </div>
+{% endfor %}                
+                                        </div>
+                                    </div>
+                                </div>                            
+{% endfor %}                
+                            
+                            </div>
+                        </div>
+{% endif %}                            
+
+                        <div class="push"></div>            
+                    </div><!-- col-md-12 -->            	         
+                </div><!-- row -->            	         
+            </div> <!--container-->
+        </div> <!-- wrapper -->
+
+        <!--Begin of footer-->            
+
+{{ include('footer.html')|indent(8) }}
+	</body>
+</html>

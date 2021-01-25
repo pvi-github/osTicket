@@ -1,0 +1,33 @@
+<div class="row">            
+
+{% if show_sidebar_buttons %}
+    <div class="col-xs-12" >            
+{% if show_sidebar_button_open_ticket %}
+        <a href="open.php" style="display:block" class="btn blue btn-info btn-lg btn-block">{{sidebar_button_open_ticket_label}}</a>
+{% endif %}
+        <a href="view.php" style="display:block" class="btn green btn-success btn-lg btn-block">{{sidebar_button_check_ticket_label}}</a>
+    </div>
+{% endif %}
+{% if show_sidebar_featured_questions or show_resource_pages %}
+    <div class="col-xs-12" >            
+{% if show_sidebar_featured_questions %}
+        <section>
+            <div class="header">{{sidebar_featured_questions_lang}}</div>
+{% for item in sidebar_featured_questions %}
+            <div><a href="{{item.path}}">{{item.question}}</a></div>
+{% endfor %}
+        </section>
+{% endif %}
+{% if show_sidebar_other_resources %}
+        <section>
+            <div class="header">{{sidebar_other_resources_lang}}</div>
+{% for item in sidebar_other_resources %}
+            <div><a href="{{item.path}}">{{item.resource}}</a></div>
+{% endfor %}
+        </section>
+{% endif %}
+    </div>
+{% else %}
+    <div class="col-xs-12"></div>
+{% endif %}
+</div>

@@ -13,21 +13,25 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
-
 require('client.inc.php');
+
+require_once INCLUDE_DIR . 'class.page.php';
 
 /*
  * Maybe put this into client.inc.php ? 
  */
 
- require_once INCLUDE_DIR . 'class.page.php';
-
 require_once ROOT_DIR.'vendor/autoload.php';
 
-$loader = new \Twig\Loader\FilesystemLoader(ROOT_DIR.'themes/legacy/templates');
-$twig = new \Twig\Environment($loader, [
+$_GLOBALS['loader'] = new \Twig\Loader\FilesystemLoader(ROOT_DIR.'themes/legacy/templates');
+//$_GLOBALS['loader'] = new \Twig\Loader\FilesystemLoader(ROOT_DIR.'themes/bootstrap/templates');
+$_GLOBALS['twig'] = new \Twig\Environment($_GLOBALS['loader'], [
     'cache' => ROOT_DIR.'data/cache/compilation_cache',
+    'auto_reload' => true
 ]);
+
+// the data to pass to twig 
+$_GLOBALS['page_data'] = Array();
 
 // filter for proper indentation of html output
 $filter = new \Twig\TwigFilter('indent', function ($string, $number) {
@@ -35,9 +39,7 @@ $filter = new \Twig\TwigFilter('indent', function ($string, $number) {
     return rtrim(preg_replace('#^(.+)$#m', sprintf('%1$s$1', $spaces), $string));
 }, array('is_safe' => array('all')));
 
-$twig->addFilter($filter);
-
-
+$_GLOBALS['twig']->addFilter($filter);
 
 /* 
  * from header.inc.php
@@ -56,6 +58,19 @@ if (($lang = Internationalization::getCurrentLanguage())) {
     $langs = Internationalization::rfc1766($langs);
     header("Content-Language: ".implode(', ', $langs));
 }
+
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+    'title' => $title,
+    
+    'root_dir' => ROOT_DIR,
+    'root_path' => ROOT_PATH,
+    'asset_path' => ASSETS_PATH,
+
+    'logo_title' => __('Support Center'),
+    'logo_path' => ROOT_PATH.'logo.php',
+    'site_title' => $ost->getConfig()->getTitle(),
+
+]);
 
 /*
  * Bar message
@@ -76,6 +91,12 @@ if($ost->getError()) {
     $_bar_message_class="notice_bar";
     $_bar_message_text=$ost->$ost->$ost->getNotice();
 }
+
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+	'bar_message' => $_bar_message,
+    'bar_message_class' => $_bar_message_class,
+    'bar_message_text' => $_bar_message_text,
+]);
 
 /*
  * Menu
@@ -102,6 +123,12 @@ if ($thisclient && is_object($thisclient) && $thisclient->isValid()
     }
 } 
 
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+
+    'user_diplay_name' => $_user_diplay_name,
+    'navigation' => $_navigation,
+]);
+
 /*
  * Languages & flags
  */
@@ -115,10 +142,16 @@ if (($all_langs = Internationalization::getConfiguredSystemLanguages())
         
         $_languages[]=[
             'class' => 'flag-'.strtolower($info['flag'] ?: $locale ?: $lang),
+            'flag' => $locale ?: $info['flag'] ?: $lang,
             'path' => '?'.http_build_query($qs),
             'label' => Internationalization::getLanguageDescription($code)];
     }
 }
+
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+    
+    'languages' => $_languages,
+]);
 
 /*
  * Navigation menu
@@ -137,6 +170,12 @@ if($nav){
     }
 }
 
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+    
+    'show_menu' => $_show_menu,
+    'menu' => $_menu,
+]);
+
 /*
  * Error messages
  */
@@ -154,6 +193,13 @@ if($errors['err']) {
     $_msg_id="msg_warning";
     $_msg= $warn;
 }
+
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+        
+    'show_msg' => $_show_msg,
+    'msg_id' => $_msg_id,
+    'msg' => $_msg,
+]);
 
 /*
  * End From header.inc.php
@@ -174,7 +220,18 @@ if (($lang = Internationalization::getCurrentLanguage()) && $lang != 'en_US') {
 }
 $_copyright = __('Copyright © ') . date('Y') . " " . Format::htmlchars((string) $ost->company ?: 'osTicket.com') . " - " . __('All rights reserved.');
 
-$_motto = __('Helpdesk software - powered by osTicket');
+$_helpdesk_software = __('Helpdesk software');
+$_powered_by = __('Powered by');
+
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+   'config_api' => $_config_api,
+    'showlang' => $_showlang,
+    'lang' => $lang,
+    'copyright' => $_copyright,
+    'helpdesk_software' => $_helpdesk_software,
+    'powered_by' => $_powered_by
+]);
+
 
 /*
  * End From footer.inc.php
@@ -184,7 +241,7 @@ $_motto = __('Helpdesk software - powered by osTicket');
  * Page content
  */
 
-// Side bar buttons : TODO
+// Side bar buttons
 $BUTTONS = isset($BUTTONS) ? $BUTTONS : true;
 $_show_sidebar_button_open_ticket=false;
 $_show_sidebar_buttons=false;
@@ -200,7 +257,6 @@ if ($BUTTONS) {
 } 
 
 // Side bar content : featured questions
-// TODO : chef if it really works
 $_show_sidebar_featured_questions=false;
 if ($cfg->isKnowledgebaseEnabled()
     && ($faqs = FAQ::getFeatured()->select_related('category')->limit(5))
@@ -231,6 +287,23 @@ if ($resources->all()) {
 
 }
 
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+        
+    'show_sidebar_button_open_ticket' => $_show_sidebar_button_open_ticket,
+    'show_sidebar_buttons' => $_show_sidebar_buttons,
+    'sidebar_button_open_ticket_label' => $_sidebar_button_open_ticket_label,
+    'sidebar_button_check_ticket_label' => $_sidebar_button_check_ticket_label,
+    
+    'show_sidebar_featured_questions' => $_show_sidebar_featured_questions,
+    'sidebar_featured_questions_lang' => $_sidebar_featured_questions_lang,
+    'sidebar_featured_questions' => $_sidebar_featured_questions,
+    
+    'show_sidebar_other_resources' => $_show_sidebar_other_resources,
+    'sidebar_other_resources_lang' => $_sidebar_other_resources_lang,
+    'sidebar_other_resources' => $_sidebar_other_resources,
+
+]);
+
 // Search form
 $_show_search=false;
 if ($cfg && $cfg->isKnowledgebaseEnabled()) {
@@ -240,6 +313,14 @@ if ($cfg && $cfg->isKnowledgebaseEnabled()) {
     $_search_by_lang=__('Search');
 }
 
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+    
+    'show_search' => $_show_search,
+    'search_action' => $_search_action,
+    'search_placeholder' => $_search_placeholder,
+    'search_by_lang' => $_search_by_lang
+]);
+
 // Landing page content
 if($cfg && ($page = $cfg->getLandingPage())) {
     $_landing_content = $page->getBodyWithImages();
@@ -247,6 +328,11 @@ if($cfg && ($page = $cfg->getLandingPage())) {
     // FIXME : Remove h1 which is hardcoded there
     $_landing_content = '<h1>'.__('Welcome to the Support Center').'</h1>';
 }
+
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+
+    'landing_content' => $_landing_content
+]);
 
 // Knowledge base
 $_show_kb=false;
@@ -273,6 +359,14 @@ if($cfg && $cfg->isKnowledgebaseEnabled()){
     }
 }
 
+$_GLOBALS['page_data'] = array_merge($_GLOBALS['page_data'], [
+
+    'show_kb' => $_show_kb,
+    'kb_title' => $_kb_title,
+    'kb_content' => $_kb_content
+    
+]);
+
 /*
  * End Page content
  */
@@ -282,62 +376,4 @@ if($cfg && $cfg->isKnowledgebaseEnabled()){
  * Render page with Twig
  */
 
-echo $twig->render('index.html', 
-    ['name' => 'Fabien',
-    'title' => $title,
-    
-    'root_dir' => ROOT_DIR,
-    'root_path' => ROOT_PATH,
-    'asset_path' => ASSETS_PATH,
-	'bar_message' => $_bar_message,
-    'bar_message_class' => $_bar_message_class,
-    'bar_message_text' => $_bar_message_text,
-
-    'user_diplay_name' => $_user_diplay_name,
-    'navigation' => $_navigation,
-    
-    'languages' => $_languages,
-    
-    'show_menu' => $_show_menu,
-    'menu' => $_menu,
-    
-    'show_msg' => $_show_msg,
-    'msg_id' => $_msg_id,
-    'msg' => $_msg,
-    
-    'logo_title' => __('Support Center'),
-    'logo_path' => ROOT_PATH.'logo.php',
-    'site_title' => $ost->getConfig()->getTitle(),
-    
-    'show_sidebar_button_open_ticket' => $_show_sidebar_button_open_ticket,
-    'show_sidebar_buttons' => $_show_sidebar_buttons,
-    'sidebar_button_open_ticket_label' => $_sidebar_button_open_ticket_label,
-    'sidebar_button_check_ticket_label' => $_sidebar_button_check_ticket_label,
-
-    
-    'show_sidebar_featured_questions' => $_show_sidebar_featured_questions,
-    'sidebar_featured_questions_lang' => $_sidebar_featured_questions_lang,
-    'sidebar_featured_questions' => $_sidebar_featured_questions,
-    
-    'show_sidebar_other_resources' => $_show_sidebar_other_resources,
-    'sidebar_other_resources_lang' => $_sidebar_other_resources_lang,
-    'sidebar_other_resources' => $_sidebar_other_resources,
-    
-    
-    'show_search' => $_show_search,
-    'search_action' => $_search_action,
-    'search_placeholder' => $_search_placeholder,
-    'search_by_lang' => $_search_by_lang,
-
-    'landing_content' => $_landing_content,
-    
-    'show_kb' => $_show_kb,
-    'kb_title' => $_kb_title,
-    'kb_content' => $_kb_content,
-    
-    'config_api' => $_config_api,
-    'showlang' => $_showlang,
-    'lang' => $lang,
-    'copyright' => $_copyright,
-    'motto' => $_motto
-    ]);
+echo $_GLOBALS['twig']->render('index.html', $_GLOBALS['page_data']);
