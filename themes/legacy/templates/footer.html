@@ -1,0 +1,15 @@
+<div id="footer">
+    <p>{{copyright}}</p>
+    <a id="poweredBy" href="https://osticket.com" target="_blank">{{motto}}</a>
+</div>
+<div id="overlay"></div>
+<div id="loading">
+    <h4>Please Wait!</h4>
+    <p>Please wait... it will take a second!</p>
+</div>
+{% if showlang %}
+<script type="text/javascript" src="{{root_path}}ajax.php/i18n/{{lang}}/js"></script>
+{% endif %}
+<script type="text/javascript">
+    getConfig().resolve({{config_api|raw}});
+</script>

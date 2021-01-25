@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+{{ include('head.html') }}
+    <body>
+        <div id="container">
+            <div id="header">
+{% if bar_message %}
+                <div class="{{bar_message_class}}">{{bar_message_text}}</div>
+{% endif %}
+                <div class="pull-right flush-right">
+                    <p>
+{% if user_diplay_name is defined %}{{user_diplay_name}}{% endif %}                    
+{% for item in navigation %}
+{% if item.path|length > 0 %}
+                        {% if item.sep %} | {% endif %}<a href="{{item.path|raw}}">{{item.label|raw}}</a>
+{% else %}
+                        {{item.sep}}{{item.label|raw}}
+{% endif %}
+{% endfor %}
+                    </p>
+                    <p>
+{% for item in languages %}
+                        <a class="flag {{item.class}}"
+                            href="{{item.path}}" title="{{item.label}}">&nbsp;</a>
+{% endfor %}
+                    </p>
+                </div>
+                <a class="pull-left" id="logo" href="/index.php"
+                    title="{{logo_title}}">
+                    <span class="valign-helper"></span>
+                    <img src="{{logo_path}}" border=0 alt="{{site_title}}">
+                </a>
+            </div>
+            <div class="clear"></div>
+{% if show_menu %}
+            <ul id="nav" class="flush-left">
+{% for item in menu %}
+                <li><a class="{{item.class1}} {{item.class2}}" href="{{item.path|raw}}">{{item.label}}</a></li>
+{% endfor %}                
+            </ul>
+{% else %}
+		    <hr/>
+{% endif %}
+            <div id="content">
+{% if show_msg %}
+                <div id="{{msg_id}}">{{msg}}</div>
+{% endif %}
+
+                <div id="landing_page">
+{{ include('sidebar.html')|indent(20) }}
+                    <div class="main-content">
+{% if show_search %}
+                        <div class="search-form">
+                            <form method="get" action="{{search_action}}">
+                                <input type="hidden" name="a" value="search"/>
+                                <input type="text" name="q" class="search" placeholder="{{search_placeholder}}"/>
+                                <button type="submit" class="green button">{{search_by_lang}}</button>
+                            </form>
+                        </div>
+{% endif %}
+                        <div class="thread-body">
+                            {{landing_content|raw}}
+                        </div>
+                    </div>
+                    <div class="clear"></div>
+                    <!-- kb -->
+                    <div>
+{% if show_kb %}
+                        <br/><br/>
+                        <h1>{{kb_title}}</h1>
+{% for item in kb_content %}
+                        <div class="featured-category front-page">
+                            <i class="icon-folder-open icon-2x"></i>
+                            <div class="category-name">
+                                {{item.name}}
+                            </div>
+{% for item_2 in item.articles %}
+                            <div class="article-headline">
+                               <div class="article-title"><a href="{{item_2.path}}">{{item_2.label}}</a></div>
+                                <div class="article-teaser">{{item_2.teaser}}</div>
+                            </div>
+{% endfor %}
+                        </div>
+{% endfor %}
+{% endif %}
+                    </div>
+                    <!-- /kb -->                    
+                </div>
+            </div>
+        </div>
+{{ include('footer.html')|indent(8) }}
+	</body>
+</html>

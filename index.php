@@ -13,70 +13,331 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+
 require('client.inc.php');
 
-require_once INCLUDE_DIR . 'class.page.php';
+/*
+ * Maybe put this into client.inc.php ? 
+ */
 
-$section = 'home';
-require(CLIENTINC_DIR.'header.inc.php');
-?>
-<div id="landing_page">
-<?php include CLIENTINC_DIR.'templates/sidebar.tmpl.php'; ?>
-<div class="main-content">
-<?php
-if ($cfg && $cfg->isKnowledgebaseEnabled()) { ?>
-<div class="search-form">
-    <form method="get" action="kb/faq.php">
-    <input type="hidden" name="a" value="search"/>
-    <input type="text" name="q" class="search" placeholder="<?php echo __('Search our knowledge base'); ?>"/>
-    <button type="submit" class="green button"><?php echo __('Search'); ?></button>
-    </form>
-</div>
-<?php } ?>
-<div class="thread-body">
-<?php
-    if($cfg && ($page = $cfg->getLandingPage()))
-        echo $page->getBodyWithImages();
-    else
-        echo  '<h1>'.__('Welcome to the Support Center').'</h1>';
-    ?>
-    </div>
-</div>
-<div class="clear"></div>
+ require_once INCLUDE_DIR . 'class.page.php';
 
-<div>
-<?php
-if($cfg && $cfg->isKnowledgebaseEnabled()){
-    //FIXME: provide ability to feature or select random FAQs ??
-?>
-<br/><br/>
-<?php
-$cats = Category::getFeatured();
-if ($cats->all()) { ?>
-<h1><?php echo __('Featured Knowledge Base Articles'); ?></h1>
-<?php
+require_once ROOT_DIR.'vendor/autoload.php';
+
+$loader = new \Twig\Loader\FilesystemLoader(ROOT_DIR.'themes/legacy/templates');
+$twig = new \Twig\Environment($loader, [
+    'cache' => ROOT_DIR.'data/cache/compilation_cache',
+]);
+
+// filter for proper indentation of html output
+$filter = new \Twig\TwigFilter('indent', function ($string, $number) {
+    $spaces = str_repeat(' ', $number);
+    return rtrim(preg_replace('#^(.+)$#m', sprintf('%1$s$1', $spaces), $string));
+}, array('is_safe' => array('all')));
+
+$twig->addFilter($filter);
+
+
+
+/* 
+ * from header.inc.php
+ */
+$title=($cfg && is_object($cfg) && $cfg->getTitle())
+    ? $cfg->getTitle() : 'osTicket :: '.__('Support Ticket System');
+$signin_url = ROOT_PATH . "login.php"
+    . ($thisclient ? "?e=".urlencode($thisclient->getEmail()) : "");
+$signout_url = ROOT_PATH . "logout.php?auth=".$ost->getLinkToken();
+
+header("Content-Type: text/html; charset=UTF-8");
+header("Content-Security-Policy: frame-ancestors ".$cfg->getAllowIframes().";");
+
+if (($lang = Internationalization::getCurrentLanguage())) {
+    $langs = array_unique(array($lang, $cfg->getPrimaryLanguage()));
+    $langs = Internationalization::rfc1766($langs);
+    header("Content-Language: ".implode(', ', $langs));
 }
 
-    foreach ($cats as $C) { ?>
-    <div class="featured-category front-page">
-        <i class="icon-folder-open icon-2x"></i>
-        <div class="category-name">
-            <?php echo $C->getName(); ?>
-        </div>
-<?php foreach ($C->getTopArticles() as $F) { ?>
-        <div class="article-headline">
-            <div class="article-title"><a href="<?php echo ROOT_PATH;
-                ?>kb/faq.php?id=<?php echo $F->getId(); ?>"><?php
-                echo $F->getQuestion(); ?></a></div>
-            <div class="article-teaser"><?php echo $F->getTeaser(); ?></div>
-        </div>
-<?php } ?>
-    </div>
-<?php
+/*
+ * Bar message
+ */
+$_bar_message=false;
+$_bar_message_class="";
+$_bar_message_text="";
+if($ost->getError()) {
+    $_bar_message=true;
+    $_bar_message_class="error_bar";
+    $_bar_message_text=$ost->getError();
+} elseif($ost->getWarning()) {
+    $_bar_message=true;
+    $_bar_message_class="warning_bar";
+    $_bar_message_text=$ost->$ost->getWarning();
+} elseif($ost->getNotice()) {
+    $_bar_message=true;
+    $_bar_message_class="notice_bar";
+    $_bar_message_text=$ost->$ost->$ost->getNotice();
+}
+
+/*
+ * Menu
+ */
+if ($thisclient && is_object($thisclient) && $thisclient->isValid()
+    && !$thisclient->isGuest()) {
+    $_sep=false;
+    $_user_diplay_name=Format::htmlchars($thisclient->getName());
+    $_sep="true";
+    $_navigation[]=['path'=>ROOT_PATH.'profile.php', 'label' => __('Profile'), 'sep' => $_sep];
+    $_navigation[]=['path'=>ROOT_PATH.'tickets.php', 'label' => sprintf(__('Tickets <b>(%d)</b>'), $thisclient->getNumTickets()), 'sep' => $_sep];
+    $_navigation[]=['path'=>$signout_url, 'label' => __('Sign Out'), 'sep' => $_sep];
+} elseif($nav) {
+    $_sep=false;
+    if ($cfg->getClientRegistrationMode() == 'public') { 
+        $_navigation[]=['path'=>'', 'label' => __('Guest User'), 'sep' => ""];
+        $_sep=true;
+    }
+    if ($thisclient && $thisclient->isValid() && $thisclient->isGuest()) {
+        $_navigation[]=['path'=>$signout_url, 'label' => __('Sign Out'), 'sep' => $_sep];
+    }
+    elseif ($cfg->getClientRegistrationMode() != 'disabled') {
+        $_navigation[]=['path'=>$signin_url, 'label' => __('Sign In'), 'sep' => $_sep];
+    }
+} 
+
+/*
+ * Languages & flags
+ */
+if (($all_langs = Internationalization::getConfiguredSystemLanguages())
+    && (count($all_langs) > 1)) {
+    $qs = array();
+    parse_str($_SERVER['QUERY_STRING'], $qs);
+    foreach ($all_langs as $code=>$info) {
+        list($lang, $locale) = explode('_', $code);
+        $qs['lang'] = $code;
+        
+        $_languages[]=[
+            'class' => 'flag-'.strtolower($info['flag'] ?: $locale ?: $lang),
+            'path' => '?'.http_build_query($qs),
+            'label' => Internationalization::getLanguageDescription($code)];
     }
 }
-?>
-</div>
-</div>
 
-<?php require(CLIENTINC_DIR.'footer.inc.php'); ?>
+/*
+ * Navigation menu
+ */
+$_show_menu=false;
+if($nav){
+    if($nav && ($navs=$nav->getNavLinks()) && is_array($navs)){
+        $_show_menu=true;
+        foreach($navs as $name =>$nav) {
+            $_menu[]=[
+            'class1' => $nav['active']?'active':'',
+            'class2' => $name,
+            'path' => (ROOT_PATH.$nav['href']),
+            'label' => $nav['desc'],"\n"];
+        }
+    }
+}
+
+/*
+ * Error messages
+ */
+$_show_msg=false;
+if($errors['err']) {
+    $_show_msg=true;
+    $_msg_id="msg_error";
+    $_msg=$errors['err'];
+}elseif($msg) {
+    $_show_msg=true;
+    $_msg_id="msg_notice";
+    $_msg=$msg;
+}elseif($warn) {
+	$_show_msg=true;
+    $_msg_id="msg_warning";
+    $_msg= $warn;
+}
+
+/*
+ * End From header.inc.php
+ */
+ 
+ 
+ /*
+  * From footer.inc.php
+  */
+include INCLUDE_DIR . 'ajax.config.php';
+$_api = new ConfigAjaxAPI();
+$_config_api = $_api->client(false);
+
+$_showlang = false;
+$lang = "";
+if (($lang = Internationalization::getCurrentLanguage()) && $lang != 'en_US') { 
+    $showlang=true;
+}
+$_copyright = __('Copyright © ') . date('Y') . " " . Format::htmlchars((string) $ost->company ?: 'osTicket.com') . " - " . __('All rights reserved.');
+
+$_motto = __('Helpdesk software - powered by osTicket');
+
+/*
+ * End From footer.inc.php
+ */
+ 
+/*
+ * Page content
+ */
+
+// Side bar buttons : TODO
+$BUTTONS = isset($BUTTONS) ? $BUTTONS : true;
+$_show_sidebar_button_open_ticket=false;
+$_show_sidebar_buttons=false;
+if ($BUTTONS) {
+    $_show_sidebar_buttons=true;
+    $_sidebar_button_open_ticket_label = __('Open a New Ticket');
+    $_sidebar_button_check_ticket_label = __('Check Ticket Status');
+
+    if ($cfg->getClientRegistrationMode() != 'disabled'
+        || !$cfg->isClientLoginRequired()) {
+            $_show_sidebar_button_open_ticket=true;
+    }
+} 
+
+// Side bar content : featured questions
+// TODO : chef if it really works
+$_show_sidebar_featured_questions=false;
+if ($cfg->isKnowledgebaseEnabled()
+    && ($faqs = FAQ::getFeatured()->select_related('category')->limit(5))
+    && $faqs->all()) {
+    unset($_sidebar_featured_questions);
+    $_show_sidebar_featured_questions=true;
+    foreach ($faqs as $F) {
+        $_sidebar_featured_questions[]=[
+            'path' => ROOT_PATH."kb/faq.php?id=".urlencode($F->getId()),
+            'question' => $F->getLocalQuestion()
+        ];
+    }
+    $_sidebar_featured_questions_lang = __('Featured Questions');
+}
+
+// Side bar content : resources
+$_show_sidebar_other_resources = false;
+$resources = Page::getActivePages()->filter(array('type'=>'other'));
+if ($resources->all()) {
+    foreach ($resources as $page) {
+        $_sidebar_other_resources[]=[
+            'path' => ROOT_PATH."pages/".$page->getNameAsSlug(),
+            'resource' => $page->getLocalName()
+        ];
+    }
+    $_sidebar_other_resources_lang = __('Other Resources');
+    $_show_sidebar_other_resources = true;
+
+}
+
+// Search form
+$_show_search=false;
+if ($cfg && $cfg->isKnowledgebaseEnabled()) {
+    $_show_search=true;
+    $_search_action="kb/faq.php";
+    $_search_placeholder=__('Search our knowledge base');
+    $_search_by_lang=__('Search');
+}
+
+// Landing page content
+if($cfg && ($page = $cfg->getLandingPage())) {
+    $_landing_content = $page->getBodyWithImages();
+} else {
+    // FIXME : Remove h1 which is hardcoded there
+    $_landing_content = '<h1>'.__('Welcome to the Support Center').'</h1>';
+}
+
+// Knowledge base
+$_show_kb=false;
+if($cfg && $cfg->isKnowledgebaseEnabled()){
+    //FIXME: provide ability to feature or select random FAQs ??
+    $cats = Category::getFeatured();
+    if ($cats->all()) {
+        $_show_kb=true;
+        $_kb_title=__('Featured Knowledge Base Articles');
+        foreach ($cats as $C) {
+            unset($_kb_articles);        
+            foreach ($C->getTopArticles() as $F) {
+                $_kb_articles[]=[
+                    'path' => ROOT_PATH.'kb/faq.php?id='.$F->getId(),
+                    'label' => $F->getQuestion(),
+                    'teaser' => $F->getTeaser()
+                ];
+            }
+            $_kb_content[]=[
+                'name' => $C->getName(),
+                'articles' => $_kb_articles
+			];
+        }
+    }
+}
+
+/*
+ * End Page content
+ */
+
+
+/*
+ * Render page with Twig
+ */
+
+echo $twig->render('index.html', 
+    ['name' => 'Fabien',
+    'title' => $title,
+    
+    'root_dir' => ROOT_DIR,
+    'root_path' => ROOT_PATH,
+    'asset_path' => ASSETS_PATH,
+	'bar_message' => $_bar_message,
+    'bar_message_class' => $_bar_message_class,
+    'bar_message_text' => $_bar_message_text,
+
+    'user_diplay_name' => $_user_diplay_name,
+    'navigation' => $_navigation,
+    
+    'languages' => $_languages,
+    
+    'show_menu' => $_show_menu,
+    'menu' => $_menu,
+    
+    'show_msg' => $_show_msg,
+    'msg_id' => $_msg_id,
+    'msg' => $_msg,
+    
+    'logo_title' => __('Support Center'),
+    'logo_path' => ROOT_PATH.'logo.php',
+    'site_title' => $ost->getConfig()->getTitle(),
+    
+    'show_sidebar_button_open_ticket' => $_show_sidebar_button_open_ticket,
+    'show_sidebar_buttons' => $_show_sidebar_buttons,
+    'sidebar_button_open_ticket_label' => $_sidebar_button_open_ticket_label,
+    'sidebar_button_check_ticket_label' => $_sidebar_button_check_ticket_label,
+
+    
+    'show_sidebar_featured_questions' => $_show_sidebar_featured_questions,
+    'sidebar_featured_questions_lang' => $_sidebar_featured_questions_lang,
+    'sidebar_featured_questions' => $_sidebar_featured_questions,
+    
+    'show_sidebar_other_resources' => $_show_sidebar_other_resources,
+    'sidebar_other_resources_lang' => $_sidebar_other_resources_lang,
+    'sidebar_other_resources' => $_sidebar_other_resources,
+    
+    
+    'show_search' => $_show_search,
+    'search_action' => $_search_action,
+    'search_placeholder' => $_search_placeholder,
+    'search_by_lang' => $_search_by_lang,
+
+    'landing_content' => $_landing_content,
+    
+    'show_kb' => $_show_kb,
+    'kb_title' => $_kb_title,
+    'kb_content' => $_kb_content,
+    
+    'config_api' => $_config_api,
+    'showlang' => $_showlang,
+    'lang' => $lang,
+    'copyright' => $_copyright,
+    'motto' => $_motto
+    ]);

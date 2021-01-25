@@ -1,0 +1,36 @@
+<div class="sidebar pull-right">
+{% if show_sidebar_buttons %}
+    <div class="front-page-button flush-right">
+{% if show_sidebar_button_open_ticket %}
+        <p>
+            <a href="open.php" style="display:block" class="blue button">{{sidebar_button_open_ticket_label}}</a>
+        </p>
+{% endif %}
+        <p>
+            <a href="view.php" style="display:block" class="green button">{{sidebar_button_check_ticket_label}}</a>
+        </p>
+    </div>
+{% endif %}
+{% if show_sidebar_featured_questions or show_resource_pages %}
+    <div class="content">
+{% if show_sidebar_featured_questions %}
+        <section>
+            <div class="header">{{sidebar_featured_questions_lang}}</div>
+{% for item in sidebar_featured_questions %}
+            <div><a href="{{item.path}}">{{item.question}}</a></div>
+{% endfor %}
+        </section>
+{% endif %}
+{% if show_sidebar_other_resources %}
+        <section>
+            <div class="header">{{sidebar_other_resources_lang}}</div>
+{% for item in sidebar_other_resources %}
+            <div><a href="{{item.path}}">{{item.resource}}</a></div>
+{% endfor %}
+        </section>
+{% endif %}
+    </div>
+{% else %}
+    <div class="content"></div>
+{% endif %}
+</div>
